@@ -24,7 +24,7 @@ typedef float DT;
 
 struct layer
 {
-	char name[8];
+	char name[10];
 	int iw, ih, ic, ow, oh, oc;
 	int k, s, p;
 };
@@ -44,6 +44,7 @@ void check(DT* result, DT* golden, int len, layer l);
 void check_fm(DT* fm, layer l);
 void show_fm(DT* fm, layer l);
 void load_weight_dt(DT* weight , int length);
+void load_bias(DT* bias , int length);
 
 void generate_fm(DT* fm, layer l);
 void generate_weight(DT* weight, layer l);
@@ -53,7 +54,8 @@ void stitch(DT* ifm[4], DT* ofm, layer l);
 void distitch(DT* ifm, DT* ofm[4], layer l);
 void fm_DT_2_DT32(DT* in, DT32* out, layer l);
 void fm_DT32_2_DT(DT32* in, DT* out, layer l);
-void w_DT_2_DT32(DT* in, DT32* out, layer l);
+void dwconv_w_DT_2_DT32(DT* in, DT32* out, layer l);
+void pwconv_w_DT_2_DT32(DT* in, DT32* out, layer l);
 void b_DT_2_DT32(DT* in, DT32* out, layer l);
 
 void DWCONV3X3(DT IFM[32][42][82], DT OFM[32][42][82], DT WBUF3x3[32][3][3]);

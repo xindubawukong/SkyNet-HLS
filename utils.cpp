@@ -33,11 +33,6 @@ void check(DT* result, DT* golden, int len, layer l)
         printf("%s correct \n", l.name);
 }
 
-void generate_weight(DT* weight, layer l)
-{
-    
-}
-
 void load_fm(DT* fm, layer l)
 {
     char nstr[50];
@@ -48,23 +43,33 @@ void load_fm(DT* fm, layer l)
     fclose(fp);
 }
 
-void load_weight_dt(DT* weight , int length)
+void load_weight(DT32* weight , int length)
 {
     char nstr[50];
-    sprintf(nstr, "../weights/dwconv2.wt");
+    sprintf(nstr, "../weights/SkyNetT.wt");
     FILE *fp = fopen(nstr, "rb");
     fread(weight, 1, length*sizeof(DT), fp);
     fclose(fp);
 }
 
-void load_weight(DT32* weight , int length)
+void load_weight_dt(DT* weight , int length)
 {
     char nstr[50];
-    sprintf(nstr, "../weights/conv1.wt");
+    sprintf(nstr, "../weights/pwconv2e.wt");
     FILE *fp = fopen(nstr, "rb");
     fread(weight, 1, length*sizeof(DT), fp);
     fclose(fp);
 }
+
+void load_bias(DT* bias , int length)
+{
+    char nstr[50];
+    sprintf(nstr, "../weights/pwconv2e.bs");
+    FILE *fp = fopen(nstr, "rb");
+    fread(bias, 1, length*sizeof(DT), fp);
+    fclose(fp);
+}
+
 
 void show_fm(DT* fm, layer l)
 {
@@ -95,13 +100,32 @@ void check_fm(DT* fm, layer l)
     fclose(fp);
 
     int err = 0;
-
-    for (int j = 0; j < len; j++)
+    
+    for(int c=0; c<l.oc; c++)
     {
-        if (((fm[j] - tmp[j]) > check_scale) || ((fm[j] - tmp[j]) < -check_scale))
+        int channel_error = 0;
+        int zero = 0;
+        for(int h=0; h<l.oh; h++)
         {
-            err++;
-            //printf("[%d] correct=%f,wrong=%f\n", j, tmp[j], fm[j]);
+            for(int w=0; w<l.ow; w++)
+            {
+                int index = c*l.oh*l.ow + h*l.ow + w;
+                if (((fm[index] - tmp[index]) > check_scale) || ((fm[index] - tmp[index]) < -check_scale))
+                {
+                    err++;
+                    channel_error++;
+                    if(fm[index]==0)
+                        zero++;
+                    //printf("!!![%d][%d][%d] correct=%f, wrong=%f\n", c, h, w, tmp[index], fm[index]);
+                }
+                else
+                {
+                    //printf("[%d][%d][%d] correct=%f\n", c, h, w, tmp[index]);
+                    if(fm[index]==0)
+                        zero++;
+                }
+                
+            }
         }
     }
 
