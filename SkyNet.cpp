@@ -264,13 +264,13 @@ void Load_DWCONV2(DT* ifm, DT IBUF[32][42][82], int Hx, int Wx, int Cx)
     int h_offset = Hx*40;
     int w_offset = Wx*80;
     int c_offset = Cx*32;
-    for (int h=0; h<40; h++)
+    for (int h=0; h<42; h++)
     {
-        for (int w=0; w<80; w++)
+        for (int w=0; w<82; w++)
         {
             for (int c=0; c<32; c++)
             {
-                int ifm_index = (c_offset+c)*80*160 + (h+h_offset)*160 + (w+w_offset);
+                int ifm_index = (c_offset+c)*82*162 + (h+h_offset)*162 + (w+w_offset);
                 IBUF[c][h][w] = ifm[ifm_index];
             }
         }
@@ -285,13 +285,27 @@ void Load_BIAS(DT* bias, DT BBUF[32], int Mx)
     }
 }
 
-void load_weight(DT* weight, DT WBUF1x1[32][32], int Nx, int Mx)
+void load_weight11(DT* weight, DT WBUF1x1[32][32], int Nx, int Mx)
 {
     for(int m=0; m<32; m++)
     {
         for(int n=0; n<32; n++)
         {
             WBUF1x1[m][n] = weight[(Mx*32 + m)*64 + (Nx*32 + n)];
+        }
+    }
+}
+
+void load_weight33(DT* weight, DT WBUF3x3[32][3][3], int Mx)
+{
+    for(int c=0; c<32; c++)
+    {
+        for(int m=0; m<3; m++)
+        {
+            for(int n=0; n<3; n++)
+            {
+                WBUF3x3[c][m][n] = weight[(Mx*32+c)*3*3 + m*3 + n];
+            }
         }
     }
 }
@@ -303,48 +317,62 @@ void export_pwconv2e(DT* ofm, DT OBUF[32][42][82], int Hx, int Wx, int Mx)
     int c_offset = Mx*32;
     for (int c=0; c<32; c++)
     {
-        for (int h=0; h<40; h++)
+        for (int h=1; h<41; h++)
         {
-            for (int w=0; w<80; w++)
+            for (int w=1; w<81; w++)
             {
-                int ofm_index = (c+c_offset)*80*160 + (h+h_offset)*160 + (w+w_offset);
+                int ofm_index = (c+c_offset)*82*162 + (h+h_offset)*162 + (w+w_offset);
                 ofm[ofm_index] = OBUF[c][h][w];
             }
         }
     }
 }
 
-void pwconv11(DT IFM[32][42][82], DT OFM[32][42][82], DT WBUF1x1[32][32])
+void dwconv2e(DT* pool1, DT* dwconv2, DT* pwconv2, DT* dwconv2_weight, DT* dwconv2_bias, DT* pwconv2_weight, DT* pwconv2_bias)
 {
-	for(int h=0; h<40; h++){
-		for(int w=0; w<80; w++){
-			for (int tm=0; tm<32; tm++){
-				DT odatatmp = OFM[tm][h][w];
-				DT odata = 0;
-				for (int tn=0; tn<32; tn++){
-					odata += WBUF1x1[tm][tn]*IFM[tn][h][w];
-				}
-                OFM[tm][h][w] = odata + odatatmp;
-			}
-		}
-	}
-}
+    DT FM1[32][42][82]={0};
+    DT FM2[32][42][82]={0};
+    DT FM3[32][42][82]={0};
+    DT FM4[32][42][82]={0};
+    DT FM5[32][42][82]={0};
+    DT WBUF3x3[4][32][3][3]={0};
+    DT WBUF1x1[4][32][32]={0};
+    DT BBUF[4][32]={0};
+    Clear_FM(FM2);
+    for(int Hx=0; Hx<2; Hx++)
+    {
+        for(int Wx=0; Wx<2; Wx++)
+        {
 
-void AddBias(DT FM[32][42][82], DT BBUF[32], int relu)
-{
-	for(int h=0; h<40; h++){
-		for(int w=0; w<80; w++){
-            for(int c=0; c<32; c++){
-                DT odata = FM[c][h][w];
-                odata += BBUF[c];
-                if(relu==1)
-                {
-                    if(odata<0)
-                        FM[c][h][w] = 0;
-                    else
-                        FM[c][h][w] = odata;
-                }
+            Load_DWCONV2(pool1, FM1, Hx, Wx, 0);
+            load_weight33(dwconv2_weight, WBUF3x3[0], 0);
+            DWCONV3X3(FM1, FM2, WBUF3x3[0]);
+            Load_BIAS(dwconv2_bias, BBUF[0], 0);
+            Add_Bias(FM2, BBUF[0], 1);
+            export_pwconv2e(dwconv2, FM2, Hx, Wx, 0);
+            
+
+            Load_DWCONV2(pool1, FM1, Hx, Wx, 1);
+            load_weight33(dwconv2_weight, WBUF3x3[0], 1);
+            DWCONV3X3(FM1, FM3, WBUF3x3[0]);
+            Load_BIAS(dwconv2_bias, BBUF[0], 1);
+            Add_Bias(FM3, BBUF[0], 1);
+            export_pwconv2e(dwconv2, FM3, Hx, Wx, 1);
+            
+            for(int Mx=0; Mx<3; Mx++)
+            {
+                load_weight11(pwconv2_weight, WBUF1x1[0], 0, Mx);
+                PWCONV1X1(FM2, FM4, WBUF1x1[0]);
+                load_weight11(pwconv2_weight, WBUF1x1[0], 1, Mx);
+                PWCONV1X1(FM3, FM4, WBUF1x1[0]);
+
+                Load_BIAS(pwconv2_bias, BBUF[0], Mx);
+                Add_Bias(FM4, BBUF[0], 1);
+                export_pwconv2e(pwconv2, FM4, Hx, Wx, Mx);
+                Clear_FM(FM4);
             }
+            Clear_FM(FM2);
+            Clear_FM(FM3);
         }
     }
 }
@@ -366,14 +394,17 @@ void pwconv2e(DT* dwconv2, DT* pwconv2, DT* weight, DT* bias)
         {
             for(int Mx=0; Mx<3; Mx++)
             {
-                for(int Nx=0; Nx<2; Nx++)
-                {
-                    Load_DWCONV2(dwconv2, FM1, Hx, Wx, Nx);
-                    load_weight(weight, WBUF1x1[0], Nx, Mx);
-                    pwconv11(FM1, FM2, WBUF1x1[0]);
-                }
+
+                Load_DWCONV2(dwconv2, FM1, Hx, Wx, 0);
+                load_weight11(weight, WBUF1x1[0], 0, Mx);
+                PWCONV1X1(FM1, FM2, WBUF1x1[0]);
+
+                Load_DWCONV2(dwconv2, FM1, Hx, Wx, 1);
+                load_weight11(weight, WBUF1x1[0], 1, Mx);
+                PWCONV1X1(FM1, FM2, WBUF1x1[0]);
+
                 Load_BIAS(bias, BBUF[0], Mx);
-                AddBias(FM2, BBUF[0], 1);
+                Add_Bias(FM2, BBUF[0], 1);
                 export_pwconv2e(pwconv2, FM2, Hx, Wx, Mx);
                 Clear_FM(FM2);
             }
@@ -381,7 +412,37 @@ void pwconv2e(DT* dwconv2, DT* pwconv2, DT* weight, DT* bias)
     }
 }
 
+void expand(DT* ifm, DT* ofm, layer l)
+{
+    for(int c=0; c<l.oc; c++)
+    {
+        for(int h=0; h<l.oh; h++)
+        {
+            for(int w=0; w<l.ow; w++)
+            {
+                int ifm_index = c*l.oh*l.ow + h*l.ow + w;
+                int ofm_index = c*(l.oh+2)*(l.ow+2) + (h+1)*(l.ow+2) + (w+1);
+                ofm[ofm_index] = ifm[ifm_index];
+            }
+        }
+    }    
+}
 
+void squeeze(DT* ifm, DT* ofm, layer l)
+{
+    for(int c=0; c<l.oc; c++)
+    {
+        for(int h=0; h<l.oh; h++)
+        {
+            for(int w=0; w<l.ow; w++)
+            {
+                int ofm_index = c*l.oh*l.ow + h*l.ow + w;
+                int ifm_index = c*(l.oh+2)*(l.ow+2) + (h+1)*(l.ow+2) + (w+1);
+                ofm[ofm_index] = ifm[ifm_index];
+            }
+        }
+    }   
+}
 DT32* parameter;
 DT* parameter_dt;
 DT* data[4];
@@ -414,14 +475,22 @@ void compare_dt32(DT32* data1, DT32* data2, int len)
     printf("error: %d\n", err);
 }
 
+DT* dwconv2_weight;
+DT* dwconv2_bias;
+DT* pwconv2_weight;
+DT* pwconv2_bias;
+DT32* dwconv2_weight32;
+DT32* dwconv2_bias32;
+DT32* pwconv2_weight32;
+DT32* pwconv2_bias32;
 void SkyNet_init()
 {
     for(int p=0; p<4; p++)
     {
         data[p] = (DT*)sds_alloc(32*160*320*sizeof(DT));
         pool1[p] = (DT*)sds_alloc(64*80*160*sizeof(DT));
-        dwconv2[p] = (DT*)sds_alloc(64*80*160*sizeof(DT));
-        pwconv2[p] = (DT*)sds_alloc(96*80*160*sizeof(DT));
+        dwconv2[p] = (DT*)sds_alloc(64*82*162*sizeof(DT));
+        pwconv2[p] = (DT*)sds_alloc(96*82*162*sizeof(DT));
     }
     data_blob = (DT*)sds_alloc(32*323*643*sizeof(DT));
     data_blob32 = (DT32*)sds_alloc(32*323*643*sizeof(DT));
@@ -436,18 +505,31 @@ void SkyNet_init()
     blob[0] = (DT*)sds_alloc(3276800*sizeof(DT));
     blob[1] = (DT*)sds_alloc(3276800*sizeof(DT));
     load_weight(parameter, 442634);
-    weight = (DT*)sds_alloc(64*96*sizeof(DT));
-    bias = (DT*)sds_alloc(96*sizeof(DT));
-
-
+    dwconv2_weight = (DT*)sds_alloc(64*9*sizeof(DT));
+    dwconv2_bias = (DT*)sds_alloc(64*sizeof(DT));
+    pwconv2_weight = (DT*)sds_alloc(64*96*sizeof(DT));
+    pwconv2_bias = (DT*)sds_alloc(96*sizeof(DT));
+    dwconv2_weight32 = (DT32*)sds_alloc(64*9*sizeof(DT));
+    dwconv2_bias32 = (DT32*)sds_alloc(64*sizeof(DT));
+    pwconv2_weight32 = (DT32*)sds_alloc(64*96*sizeof(DT));
+    pwconv2_bias32 = (DT32*)sds_alloc(96*sizeof(DT));
 }
 
 void SkyNet()
 {
-    load_weight_dt(weight, 96*64);
-    load_bias(bias, 96);
+    load_bias(dwconv2_bias, 64, config[4]);
+    load_weight_dt(dwconv2_weight, 9*64, config[4]);
+    load_bias(pwconv2_bias, 96, config[5]);
+    load_weight_dt(pwconv2_weight, 96*64, config[5]);
+
+    dwconv_w_DT_2_DT32(dwconv2_weight, dwconv2_weight32, config[4]);
+
     int input = 0;
-    load_fm(blob[input], config[4]);
-    pwconv2e(blob[input], blob[1-input], weight, bias);
-    check_fm(blob[1-input], config[5]);
+    load_fm(dwconv2[0], config[3]);
+    expand(dwconv2[0], dwconv2[1], config[3]);
+    dwconv2e(dwconv2[1], pwconv2[0], pwconv2[2], dwconv2_weight, dwconv2_bias, pwconv2_weight, pwconv2_bias);
+    squeeze(pwconv2[0], pwconv2[1], config[4]);
+    check_fm(pwconv2[1], config[4]);
+    squeeze(pwconv2[2], pwconv2[3], config[5]);
+    check_fm(pwconv2[3], config[5]);
 }

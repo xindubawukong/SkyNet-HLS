@@ -52,19 +52,19 @@ void load_weight(DT32* weight , int length)
     fclose(fp);
 }
 
-void load_weight_dt(DT* weight , int length)
+void load_weight_dt(DT* weight , int length, layer l)
 {
     char nstr[50];
-    sprintf(nstr, "../weights/pwconv2e.wt");
+    sprintf(nstr, "../weights/%s.wt", l.name);
     FILE *fp = fopen(nstr, "rb");
     fread(weight, 1, length*sizeof(DT), fp);
     fclose(fp);
 }
 
-void load_bias(DT* bias , int length)
+void load_bias(DT* bias , int length, layer l)
 {
     char nstr[50];
-    sprintf(nstr, "../weights/pwconv2e.bs");
+    sprintf(nstr, "../weights/%s.bs", l.name);
     FILE *fp = fopen(nstr, "rb");
     fread(bias, 1, length*sizeof(DT), fp);
     fclose(fp);
