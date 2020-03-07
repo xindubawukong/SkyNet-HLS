@@ -63,8 +63,8 @@ void PWCONV1X1(DT IFM[32][42][82], DT OFM[32][42][82], DT WBUF1x1[32][32]);
 void POOL(DT IFM[32][42][82], DT OFM[32][42][82]);
 
 /**********operations************/
-void pwconv(DT *ifm, DT *ofm, DT *weight, DT *bias, int relu, layer l);
-void dwconv(DT *ifm, DT *ofm, DT *weight, DT *bias, int relu, layer l);
+void pwconv1x1(DT *ifm, DT *ofm, DT *weight, DT *bias, int relu, layer l);
+void dwconv3x3(DT *ifm, DT *ofm, DT *weight, DT *bias, int relu, layer l);
 void maxpool(DT *ifm, DT *ofm, layer l);
 void concat(DT *ifm1, DT *ifm2, DT *ofm, layer l1, layer l2);
 void reorg(DT *ifm, DT *ofm, layer l);

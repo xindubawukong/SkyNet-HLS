@@ -1,6 +1,6 @@
 #include "CNN.h"
 
-void pwconv(float *ifm, float *ofm, float *weight, float *bias, int relu, layer l)
+void pwconv1x1(float *ifm, float *ofm, float *weight, float *bias, int relu, layer l)
 {
     for (int oh = 0; oh < l.oh; oh++)
     {
@@ -48,7 +48,7 @@ void pwconv(float *ifm, float *ofm, float *weight, float *bias, int relu, layer 
     }
 }
 
-void dwconv(float *ifm, float *ofm, float *weight, float *bias, int relu, layer l)
+void dwconv3x3(float *ifm, float *ofm, float *weight, float *bias, int relu, layer l)
 {
     for (int oh = 0; oh < l.oh; oh++)
     {
