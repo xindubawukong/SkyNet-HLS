@@ -73,7 +73,7 @@ DT MAX(DT a, DT b, DT c, DT d)
 	return t1 > t2 ? t1 : t2;
 }
 
-void POOL(DT IFM[32][42][82], DT OFM[32][42][82])
+void POOL(DT IFM[32][43][83], DT OFM[32][43][83])
 {
 	for(int h=1; h<=20; h++){
 		for(int w=1; w<=40; w++){

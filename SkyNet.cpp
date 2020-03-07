@@ -22,7 +22,7 @@ layer config[layer_count] = {
 { "conv7",   40,20,96,   40,20,10,   1,1,0},    //conv7
 };
 
-void Load_WBUF3x3(DT32* weight, DT WBUF3x3[32][3][3])
+void Load_WBUF3x3(DT32* weight, DT WBUF3x3[32][3][3], int Mx, layer l)
 {
     for(int m=0; m<3; m++)
     {
@@ -30,36 +30,46 @@ void Load_WBUF3x3(DT32* weight, DT WBUF3x3[32][3][3])
         {
             for(int c=0; c<32; c++)
             {
-                WBUF3x3[c][m][n] = weight[m*3 + n].data[c];
+                WBUF3x3[c][m][n] = weight[Mx*9 + m*3 + n].data[c];
             }
         }
     }
 }
 
-void Load_WBUF1x1(DT32* weight, DT WBUF1x1[32][32])
+void Load_WBUF1x1(DT32* weight, DT WBUF1x1[32][32], int Mx, int Nx, layer l)
 {
     for(int m=0; m<32; m++)
     {
         for(int n=0; n<32; n++)
         {
-            WBUF1x1[m][n] = weight[m].data[n];
+            WBUF1x1[m][n] = weight[Mx*l.ic+Nx*32+m].data[n];
         }
     }
 }
 
-void Load_BBUF(DT32* bias, DT BBUF[32])
+void Load_BBUF(DT32* bias, DT BBUF[32], int Mx)
 {
     for(int c=0; c<32; c++)
     {
-        BBUF[c] = bias[0].data[c];
+        BBUF[c] = bias[Mx].data[c];
     }
 }
 
-void Load_FM(DT32* ifm, DT IBUF[32][42][82], int Hx, int Wx, int Cx, layer l)
+void Load_FM(DT32* ifm, DT IBUF[32][43][83], int Hx, int Wx, int Cx, layer l)
 {
     int tile = l.iw/80;
-    int h_offset = Hx*40 + Hx/tile;
-    int w_offset = Wx*80 + Wx/tile;
+    int h_offset, w_offset;
+    if(tile)
+    {
+        h_offset = Hx*40 + Hx/tile;
+        w_offset = Wx*80 + Wx/tile;
+    }
+    else
+    {
+        h_offset = 0;
+        w_offset = 0;
+    }
+        
     for (int h=0; h<42; h++)
     {
         for (int w=0; w<82; w++)
@@ -73,11 +83,20 @@ void Load_FM(DT32* ifm, DT IBUF[32][42][82], int Hx, int Wx, int Cx, layer l)
     }
 }
 
-void Export_CONV(DT32* ofm, DT OBUF[32][42][82], int Hx, int Wx, int Cx, layer l)
+void Export_CONV(DT32* ofm, DT OBUF[32][43][83], int Hx, int Wx, int Cx, layer l)
 {
     int tile = l.iw/80;
-    int h_offset = Hx*40 + Hx/tile;
-    int w_offset = Wx*80 + Wx/tile;
+    int h_offset, w_offset;
+    if(tile)
+    {
+        h_offset = Hx*40 + Hx/tile;
+        w_offset = Wx*80 + Wx/tile;
+    }
+    else
+    {
+        h_offset = 0;
+        w_offset = 0;
+    }
     for (int h=1; h<=40; h++)
     {
         for (int w=1; w<=80; w++)
@@ -91,7 +110,7 @@ void Export_CONV(DT32* ofm, DT OBUF[32][42][82], int Hx, int Wx, int Cx, layer l
     }
 }
 
-void Export_POOL(DT32* ofm, DT OBUF[32][42][82], int Hx, int Wx, int Cx, layer l)
+void Export_POOL(DT32* ofm, DT OBUF[32][43][83], int Hx, int Wx, int Cx, layer l)
 {
     int tile = l.iw/80;
     int h_offset = Hx*20 + Hx/tile;
@@ -109,10 +128,40 @@ void Export_POOL(DT32* ofm, DT OBUF[32][42][82], int Hx, int Wx, int Cx, layer l
     }
 }
 
-void Add_Bias(DT FM[32][42][82], DT BBUF[32], int relu)
+void Load_FM1(DT32* ifm, DT IBUF[32][43][83], int Cx)
 {
-    for(int h=1; h<=40; h++){
-        for(int w=1; w<=80; w++){
+    for (int h=0; h<43; h++)
+    {
+        for (int w=0; w<83; w++)
+        {
+            int ifm_index = Cx*43*83 + h*83 + w;
+            for (int c=0; c<32; c++)
+            {
+                IBUF[c][h][w] = ifm[ifm_index].data[c];
+            }
+        }
+    }
+}
+
+void Export_CONV1(DT32* ofm, DT OBUF[32][43][83], int Cx)
+{
+    for (int h=1; h<=41; h++)
+    {
+        for (int w=1; w<=81; w++)
+        {
+            int ofm_index = Cx*43*83 + h*83 + w;
+            for (int c=0; c<32; c++)
+            {
+                ofm[ofm_index].data[c] = OBUF[c][h][w];
+            }
+        }
+    }
+}
+
+void Add_Bias(DT FM[32][43][83], DT BBUF[32], int relu)
+{
+    for(int h=1; h<=41; h++){
+        for(int w=1; w<=81; w++){
             for(int c=0; c<32; c++){
                 DT odata = FM[c][h][w];
                 odata += BBUF[c];
@@ -128,9 +177,9 @@ void Add_Bias(DT FM[32][42][82], DT BBUF[32], int relu)
     }
 }
 
-void Clear_FM(DT FM[32][42][82])
+void Clear_FM(DT FM[32][43][83])
 {
-    for(int h=0; h<42; h++){
+    for(int h=0; h<43; h++){
         for(int w=0; w<82; w++){
             for(int c=0; c<32; c++){
                 FM[c][h][w] = 0;
@@ -139,7 +188,7 @@ void Clear_FM(DT FM[32][42][82])
     }
 }
 
-void Compare(DT FM1[32][42][82], DT FM2[32][42][82])
+void Compare(DT FM1[32][43][83], DT FM2[32][43][83])
 {
     int error = 0;
     for(int h=1; h<41; h++){
@@ -156,11 +205,11 @@ void Compare(DT FM1[32][42][82], DT FM2[32][42][82])
 
 void SkyNet_(DT32* ifm, DT32* pool1, DT32* dwconv, DT32* pwconv, DT32* pool2, DT32* pool3, DT32* parameter)
 {
-    DT FM1[32][42][82]={0};
-    DT FM2[32][42][82]={0};
-    DT FM3[32][42][82]={0};
-    DT FM4[32][42][82]={0};
-    DT FM5[32][42][82]={0};
+    DT FM1[32][43][83]={0};
+    DT FM2[32][43][83]={0};
+    DT FM3[32][43][83]={0};
+    DT FM4[32][43][83]={0};
+    DT FM5[32][43][83]={0};
 
     DT WBUF3x3[4][32][3][3]={0};
     DT WBUF1x1[4][32][32]={0};
@@ -169,14 +218,14 @@ void SkyNet_(DT32* ifm, DT32* pool1, DT32* dwconv, DT32* pwconv, DT32* pool2, DT
     /*********************************DWCONV1+PWCONV1********************************/
     int weight_offset = 0;
     int bias_offset = weight_offset + config[1].oc*config[1].k*config[1].k/32;
-    Load_WBUF3x3(parameter + weight_offset, WBUF3x3[0]);
-    Load_BBUF(parameter + bias_offset, BBUF[0]);
+    Load_WBUF3x3(parameter + weight_offset, WBUF3x3[0], 0, config[1]);
+    Load_BBUF(parameter + bias_offset, BBUF[0], 0);
     weight_offset = bias_offset + config[1].oc/32;
     bias_offset = weight_offset + config[2].oc*config[2].ic*config[2].k*config[2].k/32;
-    Load_WBUF1x1(parameter + weight_offset, WBUF1x1[0]);
-    Load_WBUF1x1(parameter + weight_offset + 32, WBUF1x1[1]);
-    Load_BBUF(parameter + bias_offset, BBUF[1]);
-    Load_BBUF(parameter + bias_offset + 1, BBUF[2]);
+    Load_WBUF1x1(parameter + weight_offset, WBUF1x1[0], 0, 0, config[2]);
+    Load_WBUF1x1(parameter + weight_offset, WBUF1x1[1], 1, 0, config[2]);
+    Load_BBUF(parameter + bias_offset, BBUF[1], 0);
+    Load_BBUF(parameter + bias_offset, BBUF[2], 1);
     
     for(int Hx=0; Hx<8; Hx++)
     {	
@@ -214,10 +263,10 @@ void SkyNet_(DT32* ifm, DT32* pool1, DT32* dwconv, DT32* pwconv, DT32* pool2, DT
     /*********************************DWCONV2+PWCONV2********************************/
     weight_offset = bias_offset + config[2].oc/32;
     bias_offset = weight_offset + config[4].oc*config[4].k*config[4].k/32;
-    Load_WBUF3x3(parameter + weight_offset, WBUF3x3[0]);
-    Load_WBUF3x3(parameter + weight_offset + 9, WBUF3x3[1]);
-    Load_BBUF(parameter + bias_offset, BBUF[0]);
-    Load_BBUF(parameter + bias_offset + 1, BBUF[1]);
+    Load_WBUF3x3(parameter + weight_offset, WBUF3x3[0], 0, config[4]);
+    Load_WBUF3x3(parameter + weight_offset, WBUF3x3[1], 1, config[4]);
+    Load_BBUF(parameter + bias_offset, BBUF[0], 0);
+    Load_BBUF(parameter + bias_offset, BBUF[1], 1);
     weight_offset = bias_offset + config[4].oc/32;
     bias_offset = weight_offset + config[5].oc*config[5].ic/32;
     Clear_FM(FM2);
@@ -242,13 +291,13 @@ void SkyNet_(DT32* ifm, DT32* pool1, DT32* dwconv, DT32* pwconv, DT32* pool2, DT
                 //printf("load weight from %d\n", weight_offset + Mx*64 + 0);
                 //printf("load weight from %d\n", weight_offset +  Mx*64 + 32);
 
-                Load_WBUF1x1(parameter + weight_offset + Mx*64 + 0, WBUF1x1[0]);
+                Load_WBUF1x1(parameter + weight_offset, WBUF1x1[0], Mx, 0, config[5]);
                 PWCONV1X1(FM2, FM4, WBUF1x1[0]);
 
-                Load_WBUF1x1(parameter + weight_offset + Mx*64 + 32, WBUF1x1[1]);
+                Load_WBUF1x1(parameter + weight_offset, WBUF1x1[1], Mx, 1, config[5]);
                 PWCONV1X1(FM3, FM4, WBUF1x1[1]);
 
-                Load_BBUF(parameter + bias_offset + Mx, BBUF[2]);
+                Load_BBUF(parameter + bias_offset, BBUF[2], Mx);
                 Add_Bias(FM4, BBUF[2], 1);
                 
                 //Export_CONV(pwconv2, FM4, Hx, Wx, Mx, config[5]);
@@ -265,12 +314,12 @@ void SkyNet_(DT32* ifm, DT32* pool1, DT32* dwconv, DT32* pwconv, DT32* pool2, DT
     /*********************************DWCONV3+PWCONV3********************************/
     weight_offset = bias_offset + config[6].oc/32;
     bias_offset = weight_offset + config[7].oc*config[7].k*config[7].k/32;
-    Load_WBUF3x3(parameter + weight_offset, WBUF3x3[0]);
-    Load_WBUF3x3(parameter + weight_offset + 9, WBUF3x3[1]);
-    Load_WBUF3x3(parameter + weight_offset + 18, WBUF3x3[2]);
-    Load_BBUF(parameter + bias_offset, BBUF[0]);
-    Load_BBUF(parameter + bias_offset + 1, BBUF[1]);
-    Load_BBUF(parameter + bias_offset + 2, BBUF[2]);
+    Load_WBUF3x3(parameter + weight_offset, WBUF3x3[0], 0, config[7]);
+    Load_WBUF3x3(parameter + weight_offset, WBUF3x3[1], 1, config[7]);
+    Load_WBUF3x3(parameter + weight_offset, WBUF3x3[2], 2, config[7]);
+    Load_BBUF(parameter + bias_offset, BBUF[0], 0);
+    Load_BBUF(parameter + bias_offset, BBUF[1], 1);
+    Load_BBUF(parameter + bias_offset, BBUF[2], 2);
     weight_offset = bias_offset + config[7].oc/32;
     bias_offset = weight_offset + config[8].oc*config[8].ic/32;
     Clear_FM(FM2);
@@ -284,31 +333,31 @@ void SkyNet_(DT32* ifm, DT32* pool1, DT32* dwconv, DT32* pwconv, DT32* pool2, DT
             Load_FM(pool2, FM1, Hx, Wx, 0, config[7]);
             DWCONV3X3(FM1, FM2, WBUF3x3[0]);
             Add_Bias(FM2, BBUF[0], 1);
-            Export_CONV(dwconv, FM2, Hx, Wx, 0, config[7]);
+            //Export_CONV(dwconv, FM2, Hx, Wx, 0, config[7]);
             
             Load_FM(pool2, FM1, Hx, Wx, 1, config[7]);
             DWCONV3X3(FM1, FM3, WBUF3x3[1]);
             Add_Bias(FM3, BBUF[1], 1);
-            Export_CONV(dwconv, FM3, Hx, Wx, 1, config[7]);
+            //Export_CONV(dwconv, FM3, Hx, Wx, 1, config[7]);
             
             Load_FM(pool2, FM1, Hx, Wx, 2, config[7]);
             DWCONV3X3(FM1, FM4, WBUF3x3[2]);
             Add_Bias(FM4, BBUF[2], 1);
-            Export_CONV(dwconv, FM4, Hx, Wx, 2, config[7]);
+            //Export_CONV(dwconv, FM4, Hx, Wx, 2, config[7]);
 
             Clear_FM(FM1);
             for(int Mx=0; Mx<6; Mx++)
             {
-                Load_WBUF1x1(parameter + weight_offset + Mx*96 + 0, WBUF1x1[0]);
+                Load_WBUF1x1(parameter + weight_offset, WBUF1x1[0], Mx, 0, config[8]);
                 PWCONV1X1(FM2, FM1, WBUF1x1[0]);
 
-                Load_WBUF1x1(parameter + weight_offset + Mx*96 + 32, WBUF1x1[1]);
+                Load_WBUF1x1(parameter + weight_offset, WBUF1x1[1], Mx, 1, config[8]);
                 PWCONV1X1(FM3, FM1, WBUF1x1[1]);
 
-                Load_WBUF1x1(parameter + weight_offset + Mx*96 + 64, WBUF1x1[2]);
+                Load_WBUF1x1(parameter + weight_offset, WBUF1x1[2], Mx, 2, config[8]);
                 PWCONV1X1(FM4, FM1, WBUF1x1[2]);
 
-                Load_BBUF(parameter + bias_offset + Mx, BBUF[3]);
+                Load_BBUF(parameter + bias_offset, BBUF[3], Mx);
                 Add_Bias(FM1, BBUF[3], 1);
 
                 Export_CONV(pwconv, FM1, Hx, Wx, Mx, config[8]);
@@ -321,6 +370,29 @@ void SkyNet_(DT32* ifm, DT32* pool1, DT32* dwconv, DT32* pwconv, DT32* pool2, DT
             Clear_FM(FM3);
             Clear_FM(FM4);
         }
+    }
+
+    /*********************************DWCONV4+PWCONV4********************************/
+    weight_offset = bias_offset + config[8].oc/32;
+    bias_offset = weight_offset + config[11].oc*config[11].k*config[11].k/32;
+    Load_FM1(pool3, FM1, 0);
+    for(int Nx=0; Nx<6; Nx++)
+    {
+        Load_WBUF3x3(parameter + weight_offset, WBUF3x3[0], Nx, config[11]);
+        Load_BBUF(parameter + bias_offset, BBUF[0], Nx);
+        if(Nx%2==0)
+        {
+            Load_FM1(pool3, FM3, Nx+1);
+            DWCONV3X3(FM1, FM2, WBUF3x3[0]);
+        }
+        else
+        {
+            Load_FM1(pool3, FM1, Nx+1);
+            DWCONV3X3(FM3, FM2, WBUF3x3[0]);
+        }
+        Add_Bias(FM2, BBUF[0], 1);
+        Export_CONV1(dwconv, FM2, Nx);
+        Clear_FM(FM2);
     }
 }
 DT32* parameter;
@@ -372,22 +444,22 @@ void SkyNet_init()
     data_blob32 = (DT32*)sds_alloc(32*323*643*sizeof(DT));
     pool1_blob = (DT*)sds_alloc(64*163*323*sizeof(DT));
     pool1_blob32 = (DT32*)sds_alloc(64*163*323*sizeof(DT));
-    dwconv_blob = (DT*)sds_alloc(96*83*163*sizeof(DT));
-    dwconv_blob32 = (DT32*)sds_alloc(96*83*163*sizeof(DT));
+    dwconv_blob = (DT*)sds_alloc(192*43*83*sizeof(DT));
+    dwconv_blob32 = (DT32*)sds_alloc(192*43*83*sizeof(DT));
     pwconv_blob = (DT*)sds_alloc(192*83*163*sizeof(DT));
     pwconv_blob32 = (DT32*)sds_alloc(192*83*163*sizeof(DT));
     pool2_blob = (DT*)sds_alloc(96*83*163*sizeof(DT));
     pool2_blob32 = (DT32*)sds_alloc(96*83*163*sizeof(DT));
     pool3_blob = (DT*)sds_alloc(192*43*83*sizeof(DT));
     pool3_blob32 = (DT32*)sds_alloc(192*43*83*sizeof(DT));
-    parameter_dt = (DT*)sds_alloc(442634*sizeof(DT));
-    parameter = (DT32*)sds_alloc(442634*sizeof(DT));
+    parameter_dt = (DT*)sds_alloc(443634*sizeof(DT));
+    parameter = (DT32*)sds_alloc(443634*sizeof(DT));
     
 }
 
 void SkyNet()
 {
-    load_weight(parameter, 442634);
+    load_weight(parameter, 443634);
     for(int p=0; p<4; p++)
         load_fm(data[p], config[0]);
     stitch(data, data_blob, config[0]);
@@ -402,11 +474,11 @@ void SkyNet()
         check_fm(pool1[p], config[3]);
     }
     
-    fm_DT32_2_DT(dwconv_blob32, dwconv_blob, config[7]);
-    distitch(dwconv_blob, dwconv, config[7]);
+    fm_DT32_2_DT(dwconv_blob32, dwconv_blob, config[11]);
+    distitch(dwconv_blob, dwconv, config[11]);
     for(int p=0; p<4; p++)
     {
-        check_fm(dwconv[p], config[7]);
+        check_fm(dwconv[p], config[11]);
     }
 
     fm_DT32_2_DT(pwconv_blob32, pwconv_blob, config[8]);

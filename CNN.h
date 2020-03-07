@@ -58,9 +58,9 @@ void dwconv_w_DT_2_DT32(DT* in, DT32* out, layer l);
 void pwconv_w_DT_2_DT32(DT* in, DT32* out, layer l);
 void b_DT_2_DT32(DT* in, DT32* out, layer l);
 
-void DWCONV3X3(DT IFM[32][42][82], DT OFM[32][42][82], DT WBUF3x3[32][3][3]);
-void PWCONV1X1(DT IFM[32][42][82], DT OFM[32][42][82], DT WBUF1x1[32][32]);
-void POOL(DT IFM[32][42][82], DT OFM[32][42][82]);
+void DWCONV3X3(DT IFM[32][43][83], DT OFM[32][43][83], DT WBUF3x3[32][3][3]);
+void PWCONV1X1(DT IFM[32][43][83], DT OFM[32][43][83], DT WBUF1x1[32][32]);
+void POOL(DT IFM[32][43][83], DT OFM[32][43][83]);
 
 /**********operations************/
 void pwconv1x1(DT *ifm, DT *ofm, DT *weight, DT *bias, int relu, layer l);

@@ -70,7 +70,6 @@ void load_bias(DT* bias , int length, layer l)
     fclose(fp);
 }
 
-
 void show_fm(DT* fm, layer l)
 {
     for (int c=0;c<l.oc;c++)
