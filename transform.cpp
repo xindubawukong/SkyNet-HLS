@@ -95,7 +95,7 @@ void dwconv_w_DT_2_DT32(DT* in, DT32* out, layer l)
         }
 }
 
-void pwconv_w_DT_2_DT32(DT* in, DT32* out, layer l)
+void w_DT_2_DT32(DT* in, DT32* out, layer l)
 {
     for(int oc = 0; oc < l.oc; oc++)
     {
@@ -106,6 +106,23 @@ void pwconv_w_DT_2_DT32(DT* in, DT32* out, layer l)
                 for (int tn = 0; tn < 32; tn++)
                 {
                     out[(oc*l.ic/32 + Nx)*l.k*l.k + k].data[tn] = in[(oc*l.ic+Nx*32+tn)*l.k*l.k + k];
+                }
+            }
+        }
+    }
+}
+
+void pwconv_w_DT_2_DT32(DT* in, DT32* out, layer l)
+{
+    for(int Mx=0; Mx<l.oc/32; Mx++)
+    {
+        for(int Nx=0; Nx<l.ic/32; Nx++)
+        {
+            for(int m=0; m<32; m++)
+            {
+                for (int n = 0; n<32; n++)
+                {
+                    out[(Mx*l.ic/32+Nx)*32+m].data[n] = in[(Mx*32+m)*l.ic+(Nx*32+n)];
                 }
             }
         }
