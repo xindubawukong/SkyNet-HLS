@@ -154,7 +154,7 @@ void Compare(DT FM1[32][42][82], DT FM2[32][42][82])
     printf("error count: %d\n", error);
 }
 
-void SkyNet_(DT32* ifm, DT32* pool1, DT32* dwconv, DT32* pwconv, DT32* pool2, DT32* parameter)
+void SkyNet_(DT32* ifm, DT32* pool1, DT32* dwconv, DT32* pwconv, DT32* pool2, DT32* pool3, DT32* parameter)
 {
     DT FM1[32][42][82]={0};
     DT FM2[32][42][82]={0};
@@ -312,6 +312,8 @@ void SkyNet_(DT32* ifm, DT32* pool1, DT32* dwconv, DT32* pwconv, DT32* pool2, DT
                 Add_Bias(FM1, BBUF[3], 1);
 
                 Export_CONV(pwconv, FM1, Hx, Wx, Mx, config[8]);
+                POOL(FM1, FM5);
+                Export_POOL(pool3, FM5, Hx, Wx, Mx, config[10]);
                 Clear_FM(FM1);
             }
 
@@ -338,6 +340,9 @@ DT32* pwconv_blob32;
 DT* pool2[4];
 DT* pool2_blob;
 DT32* pool2_blob32;
+DT* pool3[4];
+DT* pool3_blob;
+DT32* pool3_blob32;
 void compare_dt32(DT32* data1, DT32* data2, int len)
 {
     int err = 0;
@@ -361,6 +366,7 @@ void SkyNet_init()
         dwconv[p] = (DT*)sds_alloc(96*40*80*sizeof(DT));
         pwconv[p] = (DT*)sds_alloc(192*40*80*sizeof(DT));
         pool2[p] = (DT*)sds_alloc(96*40*80*sizeof(DT));
+        pool3[p] = (DT*)sds_alloc(192*20*40*sizeof(DT));
     }
     data_blob = (DT*)sds_alloc(32*323*643*sizeof(DT));
     data_blob32 = (DT32*)sds_alloc(32*323*643*sizeof(DT));
@@ -372,6 +378,8 @@ void SkyNet_init()
     pwconv_blob32 = (DT32*)sds_alloc(192*83*163*sizeof(DT));
     pool2_blob = (DT*)sds_alloc(96*83*163*sizeof(DT));
     pool2_blob32 = (DT32*)sds_alloc(96*83*163*sizeof(DT));
+    pool3_blob = (DT*)sds_alloc(192*43*83*sizeof(DT));
+    pool3_blob32 = (DT32*)sds_alloc(192*43*83*sizeof(DT));
     parameter_dt = (DT*)sds_alloc(442634*sizeof(DT));
     parameter = (DT32*)sds_alloc(442634*sizeof(DT));
     
@@ -385,7 +393,7 @@ void SkyNet()
     stitch(data, data_blob, config[0]);
     fm_DT_2_DT32(data_blob, data_blob32, config[0]);
 
-    SkyNet_(data_blob32, pool1_blob32, dwconv_blob32, pwconv_blob32, pool2_blob32, parameter);
+    SkyNet_(data_blob32, pool1_blob32, dwconv_blob32, pwconv_blob32, pool2_blob32, pool3_blob32, parameter);
 
     fm_DT32_2_DT(pool1_blob32, pool1_blob, config[3]);
     distitch(pool1_blob, pool1, config[3]);
@@ -413,5 +421,12 @@ void SkyNet()
     for(int p=0; p<4; p++)
     {
         check_fm(pool2[p], config[6]);
+    }
+
+    fm_DT32_2_DT(pool3_blob32, pool3_blob, config[10]);
+    distitch(pool3_blob, pool3, config[10]);
+    for(int p=0; p<4; p++)
+    {
+        check_fm(pool3[p], config[10]);
     }
 }
