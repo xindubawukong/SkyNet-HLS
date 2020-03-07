@@ -394,6 +394,24 @@ void SkyNet_(DT32* ifm, DT32* pool1, DT32* dwconv, DT32* pwconv, DT32* pool2, DT
         Export_CONV1(dwconv, FM2, Nx);
         Clear_FM(FM2);
     }
+
+    weight_offset = bias_offset + config[11].oc/32;
+    bias_offset = weight_offset + config[12].oc*config[12].ic/32;
+
+    for(int Mx=0; Mx<12; Mx++)
+    {
+        Load_BBUF(parameter + bias_offset, BBUF[0], Mx);
+        for(int Nx=0; Nx<6; Nx++)
+        {
+            Load_FM1(dwconv, FM1, Nx);
+            Load_WBUF1x1(parameter + weight_offset, WBUF1x1[0], Mx, Nx, config[12]);
+            PWCONV1X1(FM1, FM2, WBUF1x1[0]);
+        }
+        Add_Bias(FM2, BBUF[0], 1);
+        Export_CONV1(pwconv, FM2, Mx);
+        Clear_FM(FM2);
+    }
+
 }
 DT32* parameter;
 DT* parameter_dt;
@@ -446,8 +464,8 @@ void SkyNet_init()
     pool1_blob32 = (DT32*)sds_alloc(64*163*323*sizeof(DT));
     dwconv_blob = (DT*)sds_alloc(192*43*83*sizeof(DT));
     dwconv_blob32 = (DT32*)sds_alloc(192*43*83*sizeof(DT));
-    pwconv_blob = (DT*)sds_alloc(192*83*163*sizeof(DT));
-    pwconv_blob32 = (DT32*)sds_alloc(192*83*163*sizeof(DT));
+    pwconv_blob = (DT*)sds_alloc(384*43*83*sizeof(DT));
+    pwconv_blob32 = (DT32*)sds_alloc(384*43*83*sizeof(DT));
     pool2_blob = (DT*)sds_alloc(96*83*163*sizeof(DT));
     pool2_blob32 = (DT32*)sds_alloc(96*83*163*sizeof(DT));
     pool3_blob = (DT*)sds_alloc(192*43*83*sizeof(DT));
@@ -481,11 +499,11 @@ void SkyNet()
         check_fm(dwconv[p], config[11]);
     }
 
-    fm_DT32_2_DT(pwconv_blob32, pwconv_blob, config[8]);
-    distitch(pwconv_blob, pwconv, config[8]);
+    fm_DT32_2_DT(pwconv_blob32, pwconv_blob, config[12]);
+    distitch(pwconv_blob, pwconv, config[12]);
     for(int p=0; p<4; p++)
     {
-        check_fm(pwconv[p], config[8]);
+        check_fm(pwconv[p], config[12]);
     }
 
     fm_DT32_2_DT(pool2_blob32, pool2_blob, config[6]);
