@@ -95,8 +95,8 @@ void DWCONV3X3(DT IFM[32][43][83], DT OFM[32][43][83], DT WBUF3x3[32][3][3])
 {
     for(int i=0; i<3; i++){
 		for(int j=0; j<3; j++){
-			for(int h=1; h<=41; h++){
-				for(int w=1; w<=81; w++){
+			for(int h=1; h<42; h++){
+				for(int w=1; w<82; w++){
 					for(int c=0; c<32; c++){
 						OFM[c][h][w] += WBUF3x3[c][i][j] * IFM[c][h+i-1][w+j-1];
 					}
@@ -108,8 +108,8 @@ void DWCONV3X3(DT IFM[32][43][83], DT OFM[32][43][83], DT WBUF3x3[32][3][3])
 
 void PWCONV1X1(DT IFM[32][43][83], DT OFM[32][43][83], DT WBUF1x1[32][32])
 {
-	for(int h=1; h<=41; h++){
-		for(int w=1; w<=81; w++){
+	for(int h=1; h<42; h++){
+		for(int w=1; w<=82; w++){
 			for (int tm=0; tm<32; tm++){
 				DT odatatmp = OFM[tm][h][w];
 				DT odata = 0;
