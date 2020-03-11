@@ -135,3 +135,18 @@ void check_fm(DT* fm, layer l)
 
     free(tmp);
 }
+
+
+void compare_dt32(DT32* data1, DT32* data2, int len)
+{
+    int err = 0;
+    for(int i=0; i<len; i++)
+    {
+        for(int j=0; j<32; j++)
+        {
+            if (((data1[i].data[j] - data2[i].data[j]) > check_scale) || ((data1[i].data[j] - data2[i].data[j]) < -check_scale))
+                err++;
+        }
+    }
+    printf("error: %d\n", err);
+}
