@@ -230,7 +230,8 @@ void Compare(DT FM1[32][43][83], DT FM2[32][43][83])
     printf("error count: %d\n", error);
 }
 
-int pool1_offset, pool2_offset, pwconv3_offset, pool3_offset, dwconv4_offset, pwconv4_offset, dwconv5_offset, pwconv5_offset;
+
+int pool1_offset, pool2_offset, pwconv3_offset, pool3_offset, dwconv4_offset, pwconv4_offset, dwconv5_offset, pwconv5_offset, reorg_offset, dwconv6_offset, pwconv6_offset;
 void SkyNet_(DT32* ifm, DT32* ofm, DT32* parameter)
 {
     DT FM1[32][43][83]={0};
@@ -430,11 +431,20 @@ void SkyNet_(DT32* ifm, DT32* ofm, DT32* parameter)
     for(int Mx=0; Mx<12; Mx++)
     {
         Load_BBUF(parameter + bias_offset, BBUF[0], Mx);
+        Load_FM1(ofm + dwconv4_offset, FM1, 0);
         for(int Nx=0; Nx<6; Nx++)
         {
-            Load_FM1(ofm + dwconv4_offset, FM1, Nx);
             Load_WBUF1x1(parameter + weight_offset, WBUF1x1[0], Mx, Nx, config[12]);
-            PWCONV1X1(FM1, FM2, WBUF1x1[0]);
+            if(Nx%2==0)
+            {
+                Load_FM1(ofm + dwconv4_offset, FM3, Nx+1);
+                PWCONV1X1(FM1, FM2, WBUF1x1[0]);
+            }
+            else
+            {
+                Load_FM1(ofm + dwconv4_offset, FM1, Nx+1);
+                PWCONV1X1(FM3, FM2, WBUF1x1[0]);
+            }
         }
         Add_Bias(FM2, BBUF[0], 1);
         Export_CONV1(ofm + pwconv4_offset, FM2, Mx);
@@ -445,13 +455,22 @@ void SkyNet_(DT32* ifm, DT32* ofm, DT32* parameter)
     bias_offset = weight_offset + config[13].oc*config[13].k*config[13].k/32;
     dwconv5_offset = pwconv4_offset + config[12].oc*(2*config[12].oh+3)*(2*config[12].ow+3)/32;
     pwconv5_offset = dwconv5_offset + config[13].oc*(2*config[13].oh+3)*(2*config[13].ow+3)/32;
-    Clear_FM(FM2);
+
+    Load_FM1(ofm + pwconv4_offset, FM1, 0);
     for(int Nx=0; Nx<12; Nx++)
     {
         Load_WBUF3x3(parameter + weight_offset, WBUF3x3[0], Nx, config[13]);
         Load_BBUF(parameter + bias_offset, BBUF[0], Nx);
-        Load_FM1(ofm + pwconv4_offset, FM1, Nx);
-        DWCONV3X3(FM1, FM2, WBUF3x3[0]);
+        if(Nx%2==0)
+        {
+            Load_FM1(ofm + pwconv4_offset, FM3, Nx+1);
+            DWCONV3X3(FM1, FM2, WBUF3x3[0]);
+        }
+        else
+        {
+            Load_FM1(ofm + pwconv4_offset, FM1, Nx+1);
+            DWCONV3X3(FM3, FM2, WBUF3x3[0]);
+        }
         Add_Bias(FM2, BBUF[0], 1);
         Export_CONV1(ofm + dwconv5_offset, FM2, Nx);
         Clear_FM(FM2);
@@ -472,6 +491,20 @@ void SkyNet_(DT32* ifm, DT32* ofm, DT32* parameter)
         Add_Bias(FM2, BBUF[0], 1);
         Export_CONV1(ofm + pwconv5_offset, FM2, Mx);
         Clear_FM(FM2);
+    }
+
+    /*********************************REORG********************************/
+    reorg_offset = pwconv5_offset + config[14].oc*(2*config[14].oh+3)*(2*config[14].ow+3)/32;
+    for(int Nx=0; Nx<6; Nx++)
+    {
+        Reorg1(ofm + pwconv3_offset, FM1, Nx);
+        Export_CONV1(ofm + reorg_offset, FM1, Nx);
+        Reorg2(ofm + pwconv3_offset, FM1, Nx);
+        Export_CONV1(ofm + reorg_offset, FM1, Nx+6);
+        Reorg3(ofm + pwconv3_offset, FM1, Nx);
+        Export_CONV1(ofm + reorg_offset, FM1, Nx+12);
+        Reorg4(ofm + pwconv3_offset, FM1, Nx);
+        Export_CONV1(ofm + reorg_offset, FM1, Nx+18);
     }
 }
 
@@ -553,5 +586,12 @@ void SkyNet()
     for(int p=0; p<4; p++)
     {
         check_fm(ofm[p], config[14]);
+    }
+
+    fm_DT32_2_DT(&ofm_blob32[reorg_offset], ofm_blob, config[9]);
+    distitch(ofm_blob, ofm, config[9]);
+    for(int p=0; p<4; p++)
+    {
+        check_fm(ofm[p], config[9]);
     }
 }

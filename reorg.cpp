@@ -51,3 +51,207 @@ void reorg(float *ifm, float *ofm, layer l)
         }
     }
 }
+
+void Reorg1(DT32* ifm,  DT IBUF[32][43][83], int Cx)
+{
+    int h_, w_, ofm_index;
+    for (int h=1; h<=20; h++)
+    {
+        for (int w=1; w<=40; w++)
+        {
+            h_ = 2*h-1;
+            w_ = 2*w-1;
+            ofm_index = Cx*83*163 + h_*163 + w_;
+            for (int c=0; c<32; c++)
+            {
+                IBUF[c][h][w] = ifm[ofm_index].data[c];
+            }
+        }
+        for (int w=42; w<=81; w++)
+        {
+            h_ = 2*h-1;
+            w_ = 2*w-2;
+            ofm_index = Cx*83*163 + h_*163 + w_;
+            for (int c=0; c<32; c++)
+            {
+                IBUF[c][h][w] = ifm[ofm_index].data[c];
+            }
+        }
+    }
+    for (int h=22; h<=41; h++)
+    {
+        for (int w=1; w<=40; w++)
+        {
+            h_ = 2*h-2;
+            w_ = 2*w-1;
+            ofm_index = Cx*83*163 + h_*163 + w_;
+            for (int c=0; c<32; c++)
+            {
+                IBUF[c][h][w] = ifm[ofm_index].data[c];
+            }
+        }
+        for (int w=42; w<=81; w++)
+        {
+            h_ = 2*h-2;
+            w_ = 2*w-2;
+            ofm_index = Cx*83*163 + h_*163 + w_;
+            for (int c=0; c<32; c++)
+            {
+                IBUF[c][h][w] = ifm[ofm_index].data[c];
+            }
+        }
+    }
+}
+
+void Reorg2(DT32* ifm,  DT IBUF[32][43][83], int Cx)
+{
+    int h_, w_, ofm_index;
+    for (int h=1; h<=20; h++)
+    {
+        for (int w=1; w<=40; w++)
+        {
+            h_ = 2*h-1;
+            w_ = 2*w;
+            ofm_index = Cx*83*163 + h_*163 + w_;
+            for (int c=0; c<32; c++)
+            {
+                IBUF[c][h][w] = ifm[ofm_index].data[c];
+            }
+        }
+        for (int w=42; w<=81; w++)
+        {
+            h_ = 2*h-1;
+            w_ = 2*w-1;
+            ofm_index = Cx*83*163 + h_*163 + w_;
+            for (int c=0; c<32; c++)
+            {
+                IBUF[c][h][w] = ifm[ofm_index].data[c];
+            }
+        }
+    }
+    for (int h=22; h<=41; h++)
+    {
+        for (int w=1; w<=40; w++)
+        {
+            h_ = 2*h-2;
+            w_ = 2*w;
+            ofm_index = Cx*83*163 + h_*163 + w_;
+            for (int c=0; c<32; c++)
+            {
+                IBUF[c][h][w] = ifm[ofm_index].data[c];
+            }
+        }
+        for (int w=42; w<=81; w++)
+        {
+            h_ = 2*h-2;
+            w_ = 2*w-1;
+            ofm_index = Cx*83*163 + h_*163 + w_;
+            for (int c=0; c<32; c++)
+            {
+                IBUF[c][h][w] = ifm[ofm_index].data[c];
+            }
+        }
+    }
+}
+
+void Reorg3(DT32* ifm,  DT IBUF[32][43][83], int Cx)
+{
+    int h_, w_, ofm_index;
+    for (int h=1; h<=20; h++)
+    {
+        for (int w=1; w<=40; w++)
+        {
+            h_ = 2*h;
+            w_ = 2*w-1;
+            ofm_index = Cx*83*163 + h_*163 + w_;
+            for (int c=0; c<32; c++)
+            {
+                IBUF[c][h][w] = ifm[ofm_index].data[c];
+            }
+        }
+        for (int w=42; w<=81; w++)
+        {
+            h_ = 2*h;
+            w_ = 2*w-2;
+            ofm_index = Cx*83*163 + h_*163 + w_;
+            for (int c=0; c<32; c++)
+            {
+                IBUF[c][h][w] = ifm[ofm_index].data[c];
+            }
+        }
+    }
+    for (int h=22; h<=41; h++)
+    {
+        for (int w=1; w<=40; w++)
+        {
+            h_ = 2*h-1;
+            w_ = 2*w-1;
+            ofm_index = Cx*83*163 + h_*163 + w_;
+            for (int c=0; c<32; c++)
+            {
+                IBUF[c][h][w] = ifm[ofm_index].data[c];
+            }
+        }
+        for (int w=42; w<=81; w++)
+        {
+            h_ = 2*h-1;
+            w_ = 2*w-2;
+            ofm_index = Cx*83*163 + h_*163 + w_;
+            for (int c=0; c<32; c++)
+            {
+                IBUF[c][h][w] = ifm[ofm_index].data[c];
+            }
+        }
+    }
+}
+
+void Reorg4(DT32* ifm,  DT IBUF[32][43][83], int Cx)
+{
+    int h_, w_, ofm_index;
+    for (int h=1; h<=20; h++)
+    {
+        for (int w=1; w<=40; w++)
+        {
+            h_ = 2*h;
+            w_ = 2*w;
+            ofm_index = Cx*83*163 + h_*163 + w_;
+            for (int c=0; c<32; c++)
+            {
+                IBUF[c][h][w] = ifm[ofm_index].data[c];
+            }
+        }
+        for (int w=42; w<=81; w++)
+        {
+            h_ = 2*h;
+            w_ = 2*w-1;
+            ofm_index = Cx*83*163 + h_*163 + w_;
+            for (int c=0; c<32; c++)
+            {
+                IBUF[c][h][w] = ifm[ofm_index].data[c];
+            }
+        }
+    }
+    for (int h=22; h<=41; h++)
+    {
+        for (int w=1; w<=40; w++)
+        {
+            h_ = 2*h-1;
+            w_ = 2*w;
+            ofm_index = Cx*83*163 + h_*163 + w_;
+            for (int c=0; c<32; c++)
+            {
+                IBUF[c][h][w] = ifm[ofm_index].data[c];
+            }
+        }
+        for (int w=42; w<=81; w++)
+        {
+            h_ = 2*h-1;
+            w_ = 2*w-1;
+            ofm_index = Cx*83*163 + h_*163 + w_;
+            for (int c=0; c<32; c++)
+            {
+                IBUF[c][h][w] = ifm[ofm_index].data[c];
+            }
+        }
+    }
+}
