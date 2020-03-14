@@ -19,7 +19,7 @@ layer config[layer_count] = {
 { "cat",     40,20,192,  40,20,1280, 0,0,0},    //concat  15
 { "dwconv6", 40,20,1280, 40,20,1280, 3,1,1},    //dwconv6 16
 { "pwconv6", 40,20,1280, 40,20,96,   1,1,0},    //pwconv6 17
-{ "conv7",   40,20,96,   40,20,10,   1,1,0},    //conv7   18
+{ "conv7e",   40,20,96,   40,20,32,   1,1,0},    //conv7   18
 };
 
 void Load_WBUF3x3(DT32* weight, DT WBUF3x3[32][3][3], int Mx, layer l)
@@ -221,7 +221,7 @@ void Compare(DT FM1[32][43][83], DT FM2[32][43][83])
 }
 
 
-int pool1_offset, pool2_offset, pwconv3_offset, pool3_offset, dwconv4_offset, pwconv4_offset, dwconv5_offset, pwconv5_offset, reorg_offset, dwconv6_offset, pwconv6_offset;
+int pool1_offset, pool2_offset, pwconv3_offset, pool3_offset, dwconv4_offset, pwconv4_offset, dwconv5_offset, pwconv5_offset, reorg_offset, dwconv6_offset, pwconv6_offset, conv7_offset;
 void SkyNet_(DT32* ifm, DT32* ofm, DT32* parameter)
 {
     DT FM1[32][43][83]={0};
@@ -500,7 +500,7 @@ void SkyNet_(DT32* ifm, DT32* ofm, DT32* parameter)
     for(int Nx=0; Nx<6; Nx++)
     {
         Reorg1(ofm + pwconv3_offset, FM1, Nx);
-        Export_CONV1(ofm + reorg_offset, FM1, Nx);
+        //Export_CONV1(ofm + reorg_offset, FM1, Nx);
         Load_WBUF3x3(parameter + weight_offset, WBUF3x3[0], Nx, config[16]);
         Load_BBUF(parameter + bias_offset, BBUF[0], Nx);
         DWCONV3X3(FM1, FM2, WBUF3x3[0]);
@@ -509,7 +509,7 @@ void SkyNet_(DT32* ifm, DT32* ofm, DT32* parameter)
         Clear_FM(FM2);
 
         Reorg2(ofm + pwconv3_offset, FM1, Nx);
-        Export_CONV1(ofm + reorg_offset, FM1, Nx+6);
+        //Export_CONV1(ofm + reorg_offset, FM1, Nx+6);
         Load_WBUF3x3(parameter + weight_offset, WBUF3x3[0], Nx+6, config[16]);
         Load_BBUF(parameter + bias_offset, BBUF[0], Nx+6);
         DWCONV3X3(FM1, FM2, WBUF3x3[0]);
@@ -518,7 +518,7 @@ void SkyNet_(DT32* ifm, DT32* ofm, DT32* parameter)
         Clear_FM(FM2);
 
         Reorg3(ofm + pwconv3_offset, FM1, Nx);
-        Export_CONV1(ofm + reorg_offset, FM1, Nx+12);
+        //Export_CONV1(ofm + reorg_offset, FM1, Nx+12);
         Load_WBUF3x3(parameter + weight_offset, WBUF3x3[0], Nx+12, config[16]);
         Load_BBUF(parameter + bias_offset, BBUF[0], Nx+12);
         DWCONV3X3(FM1, FM2, WBUF3x3[0]);
@@ -527,7 +527,7 @@ void SkyNet_(DT32* ifm, DT32* ofm, DT32* parameter)
         Clear_FM(FM2);
 
         Reorg4(ofm + pwconv3_offset, FM1, Nx);
-        Export_CONV1(ofm + reorg_offset, FM1, Nx+18);
+        //Export_CONV1(ofm + reorg_offset, FM1, Nx+18);
         Load_WBUF3x3(parameter + weight_offset, WBUF3x3[0], Nx+18, config[16]);
         Load_BBUF(parameter + bias_offset, BBUF[0], Nx+18);
         DWCONV3X3(FM1, FM2, WBUF3x3[0]);
@@ -582,6 +582,17 @@ void SkyNet_(DT32* ifm, DT32* ofm, DT32* parameter)
         Export_CONV1(ofm + pwconv6_offset, FM2, Mx);
         Clear_FM(FM2);
     }
+    /*********************************CONV7********************************/
+    weight_offset = bias_offset + config[17].oc/32;
+    bias_offset = weight_offset + config[18].ic*config[18].oc/32;
+    conv7_offset = pwconv6_offset + config[17].oc*(2*config[17].oh+3)*(2*config[17].ow+3)/32;
+    for(int Nx=0; Nx<3; Nx++)
+    {
+        Load_FM1(ofm + pwconv6_offset, FM1, Nx);
+        Load_WBUF1x1(parameter + weight_offset, WBUF1x1[0], 0, Nx, config[18]);
+        PWCONV1X1(FM1, FM2, WBUF1x1[0]);
+    }
+    Export_CONV1(ofm + conv7_offset, FM2, 0);
 }
 
 DT32* parameter;
@@ -600,14 +611,14 @@ void SkyNet_init()
     }
     data_blob = (DT*)sds_alloc(384*323*643*sizeof(DT));
     data_blob32 = (DT32*)sds_alloc(384*323*643*sizeof(DT));
-    parameter = (DT32*)sds_alloc(443634*sizeof(DT));
+    parameter = (DT32*)sds_alloc(444768*sizeof(DT));
     ofm_blob32 = (DT32*)sds_alloc(32*999999*sizeof(DT));
     ofm_blob = (DT*)sds_alloc(64*643*323*sizeof(DT));
 }
 
 void SkyNet()
 {
-    load_weight(parameter, 443634);
+    load_weight(parameter, 444768);
     for(int p=0; p<4; p++)
         load_fm(data[p], config[0]);
     stitch(data, data_blob, config[0]);
@@ -683,5 +694,12 @@ void SkyNet()
     for(int p=0; p<4; p++)
     {
         check_fm(ofm[p], config[17]);
+    }
+
+    fm_DT32_2_DT(&ofm_blob32[conv7_offset], ofm_blob, config[18]);
+    distitch(ofm_blob, ofm, config[18]);
+    for(int p=0; p<4; p++)
+    {
+        check_fm(ofm[p], config[18]);
     }
 }
