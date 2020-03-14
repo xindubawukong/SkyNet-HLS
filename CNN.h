@@ -20,7 +20,7 @@
 typedef float DT;
 
 #define layer_count 19
-#define check_scale 0.01
+#define check_scale 0.00001
 
 struct layer
 {

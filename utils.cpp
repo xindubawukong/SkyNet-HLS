@@ -55,7 +55,8 @@ void load_weight(DT32* weight , int length)
 void load_weight_dt(DT* weight , int length, layer l)
 {
     char nstr[50];
-    sprintf(nstr, "../weights/%s.wt", l.name);
+    sprintf(nstr, "../weights/SkyNet.wt");
+    //sprintf(nstr, "../weights/%s.wt", l.name);
     FILE *fp = fopen(nstr, "rb");
     fread(weight, 1, length*sizeof(DT), fp);
     fclose(fp);
@@ -99,11 +100,11 @@ void check_fm(DT* fm, layer l)
     fclose(fp);
 
     int err = 0;
-    
+    int zero;
     for(int c=0; c<l.oc; c++)
     {
         int channel_error = 0;
-        int zero = 0;
+        zero = 0;
         for(int h=0; h<l.oh; h++)
         {
             for(int w=0; w<l.ow; w++)

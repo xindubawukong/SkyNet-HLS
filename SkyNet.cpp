@@ -145,40 +145,27 @@ void Load_FM1(DT32* ifm, DT IBUF[32][43][83], int Cx)
 
 void Export_CONV1(DT32* ofm, DT OBUF[32][43][83], int Cx)
 {
-    for (int h=1; h<=20; h++)
+    for (int h=0; h<43; h++)
     {
-        for (int w=1; w<=40; w++)
+        for (int c=0; c<32; c++)
         {
-            int ofm_index = Cx*43*83 + h*83 + w;
-            for (int c=0; c<32; c++)
-            {
-                ofm[ofm_index].data[c] = OBUF[c][h][w];
-            }
-        }
-        for (int w=42; w<=81; w++)
-        {
-            int ofm_index = Cx*43*83 + h*83 + w;
-            for (int c=0; c<32; c++)
-            {
-                ofm[ofm_index].data[c] = OBUF[c][h][w];
-            }
+            OBUF[c][h][41] = 0;
         }
     }
-    for (int h=22; h<=41; h++)
+    for (int w=0; w<83; w++)
     {
-        for (int w=1; w<=40; w++)
+        for (int c=0; c<32; c++)
         {
-            int ofm_index = Cx*43*83 + h*83 + w;
-            for (int c=0; c<32; c++)
-            {
-                ofm[ofm_index].data[c] = OBUF[c][h][w];
-            }
+            OBUF[c][21][w] = 0;
         }
-        for (int w=42; w<=81; w++)
+    }
+    for (int h=1; h<42; h++)
+    {
+        for (int w=1; w<82; w++)
         {
-            int ofm_index = Cx*43*83 + h*83 + w;
             for (int c=0; c<32; c++)
             {
+                int ofm_index = Cx*43*83 + h*83 + w;
                 ofm[ofm_index].data[c] = OBUF[c][h][w];
             }
         }
@@ -206,9 +193,12 @@ void Add_Bias(DT FM[32][43][83], DT BBUF[32], int relu)
 
 void Clear_FM(DT FM[32][43][83])
 {
-    for(int h=0; h<43; h++){
-        for(int w=0; w<82; w++){
-            for(int c=0; c<32; c++){
+    for(int h=0; h<43; h++)
+    {
+        for(int w=0; w<83; w++)
+        {
+            for(int c=0; c<32; c++)
+            {
                 FM[c][h][w] = 0;
             }
         }
@@ -506,6 +496,31 @@ void SkyNet_(DT32* ifm, DT32* ofm, DT32* parameter)
         Reorg4(ofm + pwconv3_offset, FM1, Nx);
         Export_CONV1(ofm + reorg_offset, FM1, Nx+18);
     }
+    /*********************************DWCONV6+PWCONV6********************************/
+    weight_offset = bias_offset + config[14].oc/32;
+    bias_offset = weight_offset + config[16].oc*config[16].k*config[16].k/32;
+    dwconv6_offset = reorg_offset + config[15].oc*(2*config[15].oh+3)*(2*config[15].ow+3)/32;
+    Clear_FM(FM2);
+    for(int Nx=0; Nx<24; Nx++)
+    {
+        Load_WBUF3x3(parameter + weight_offset, WBUF3x3[0], Nx, config[16]);
+        Load_BBUF(parameter + bias_offset, BBUF[0], Nx);
+        Load_FM1(ofm + reorg_offset, FM1, Nx);
+        DWCONV3X3(FM1, FM2, WBUF3x3[0]);
+        Add_Bias(FM2,BBUF[0],1);
+        Export_CONV1(ofm + dwconv6_offset, FM2, Nx);
+        Clear_FM(FM2);
+    }
+    for(int Nx=0; Nx<16; Nx++)
+    {
+        Load_WBUF3x3(parameter + weight_offset, WBUF3x3[0], Nx+24, config[16]);
+        Load_BBUF(parameter + bias_offset, BBUF[0], Nx+24);
+        Load_FM1(ofm + pwconv5_offset, FM1, Nx);
+        DWCONV3X3(FM1, FM2, WBUF3x3[0]);
+        Add_Bias(FM2,BBUF[0],1);
+        Export_CONV1(ofm + dwconv6_offset, FM2, Nx+24);
+        Clear_FM(FM2);
+    }
 }
 
 DT32* parameter;
@@ -593,5 +608,12 @@ void SkyNet()
     for(int p=0; p<4; p++)
     {
         check_fm(ofm[p], config[9]);
+    }
+
+    fm_DT32_2_DT(&ofm_blob32[dwconv6_offset], ofm_blob, config[16]);
+    distitch(ofm_blob, ofm, config[16]);
+    for(int p=0; p<4; p++)
+    {
+        check_fm(ofm[p], config[16]);
     }
 }
